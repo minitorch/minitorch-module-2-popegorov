@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, List, Tuple
 
 from typing_extensions import Protocol
+from collections import deque, defaultdict
 
 # ## Task 1.1
 # Central Difference calculation
@@ -22,7 +23,9 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
     Returns:
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    new_values = list(vals)
+    new_values[arg] = new_values[arg] + epsilon
+    return (f(*new_values) - f(*vals)) / epsilon
 
 
 variable_count = 1
@@ -60,7 +63,22 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    visited = set()
+    nodes = []
+
+    def visit(node: Variable):
+        if node.unique_id in visited:
+            return
+        if node.is_constant():
+            return
+        if not node.is_leaf():
+            for input_ in node.history.inputs:
+                visit(input_)
+        visited.add(node.unique_id)
+        nodes.append(node)
+
+    visit(variable)
+    return reversed(nodes)
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -74,7 +92,20 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    derivs = defaultdict(float)
+    derivs[variable.unique_id]  = deriv
+    top_sort = topological_sort(variable)
+    
+    for v in top_sort:
+        d_output = derivs.get(v.unique_id, 0)
+
+        if v.is_leaf():
+            v.accumulate_derivative(d_output)
+        else:
+            for parent, deriv in v.chain_rule(d_output):
+                if parent.is_constant():
+                    continue
+                derivs[parent.unique_id] += deriv
 
 
 @dataclass
